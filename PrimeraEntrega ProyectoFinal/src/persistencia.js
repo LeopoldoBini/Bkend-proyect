@@ -3,7 +3,7 @@ const fs = require("fs");
 const ContenedorProductos = class {
   constructor(nombreArchivo) {
     this.nombre = nombreArchivo;
-    this.path = `./${nombreArchivo}.txt`;
+    this.path = `./${nombreArchivo}.json`;
     this.lastId = 0;
     this.idList = [];
     this.productos = [];
@@ -18,27 +18,36 @@ const ContenedorProductos = class {
       "stock",
     ];
   }
-  getAll() {
-    try {
-      const data = fs.readFileSync(this.path, "utf-8");
-      const parsedData = JSON.parse(data);
-
-      this.idList = parsedData.reduce((a, b) => [...a, b.id], []);
-      this.lastId = Math.max(...this.idList);
-      this.productos = parsedData;
-      return parsedData;
-    } catch (er) {
-      fs.writeFileSync(this.path, "[]");
-      console.log(er);
-      return [];
+  readDB = () => {
+    try{
+      let json = fs.readFileSync(this.path, "utf8");
+      return JSON.parse(json);
+    } catch (error){
+      console.error("Algo salió mal leyendo la db" ,error)
+      return 
     }
   }
-  writeProductosOnFile() {
+  writeDB() {
     const strigyList = JSON.stringify(this.productos);
     fs.writeFileSync(this.path, strigyList);
     this.getAll();
   }
+  getAll() {
+    
+    if (!fs.existsSync(this.path)) {
+      fs.writeFileSync(this.path, "[]");
+      return [];
+    }
+    const parsedData = this.readDB();
+    if (parsedData.length > 0) {
+      this.idList = parsedData.map((prod) => prod.id);
+      this.lastId = Math.max(...this.idList);
+      this.productos = parsedData;  
+    }
+    return this.productos;
+  }
   createProducto(producto) {
+
     const isAValidProduct = this.prodKeysFormat.reduce(
       (reducingBoolean, key) => {
         const thisKeyValue = producto[key];
@@ -58,19 +67,18 @@ const ContenedorProductos = class {
       },
       true
     );
-
     if (!isAValidProduct) {
       throw new Error("Se requieren todos los campos");
     }
-    //this.getAll();
-    this.lastId++;
-    producto.id = this.lastId;
+
+    ;
+    producto.id = ++this.lastId;
     this.productos.push(producto);
-    this.writeProductosOnFile();
+    this.idList.push(producto.id);
+    this.writeDB();
     return producto.id;
   }
   getProductoById(id) {
-    //this.getAll();
     const foundProduct = this.productos.filter((producto) => producto.id == id);
     return foundProduct.length === 0 ? false : foundProduct;
   }
@@ -91,7 +99,7 @@ const ContenedorProductos = class {
         this.productos[indexToUpdate][key] = value;
       }
     });
-    this.writeProductosOnFile();
+    this.writeDB();
     return {
       mensaje: "producto actualizado",
       producto: this.productos[indexToUpdate],
@@ -104,7 +112,7 @@ const ContenedorProductos = class {
       throw new Error("no tenemos ese producto");
     }
     const deletedProduct = this.productos.splice(indexToDelete, 1);
-    this.writeProductosOnFile();
+    this.writeDB();
     return {
       mensaje: "producto eliminado",
       producto: deletedProduct,
@@ -114,7 +122,7 @@ const ContenedorProductos = class {
     this.lastId = 0;
     this.idList = [];
     this.productos = [];
-    this.writeProductosOnFile();
+    this.writeDB();
   }
 };
 
