@@ -13,6 +13,9 @@ const apiCart = express.Router();
 app.use("/api/productos", apiProd);
 app.use("/api/carrito", apiCart);
 
+
+
+apiProd.get("/", getProducts)
 apiProd.get("/:id", getProducts)
 
 apiProd.post("/", addProduct) //Solo admin

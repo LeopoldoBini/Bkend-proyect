@@ -5,8 +5,8 @@ const { productsContainer : pc, carritosContainer : cc } = require("./persistenc
 
 
 exports.getProducts = (req, res) => {
+    
     const id = req.params.id;
-
     if (id) {
     const producto = pc.getProductoById(id);
     producto
@@ -24,7 +24,8 @@ exports.addProduct = (req, res) => {
         const id = pc.createProducto(producto);
         res.status(201).json({ mensaje: "Producto creado", id });
     }catch(error){
-        res.status(400).json({ mensaje: error });
+        res.status(400).json({ mensaje: error.message, attemptedProduct: producto });
+
     }
 
 }
@@ -36,7 +37,8 @@ exports.updateProduct = (req, res) => {
     try{
         res.status(200).json(pc.updateProducto(id, producto));
     }catch(error){
-        res.status(404).json({ mensaje: error });
+        res.status(404).json({mensaje: error.message});
+        
     }
 }
 
@@ -46,7 +48,7 @@ exports.deleteProduct = (req, res) => {
     try{
         res.status(200).json(pc.deleteProductoById(id));
     }catch(error){
-        res.status(404).json({ mensaje: error });
+        res.status(404).json({ mensaje: error.message });
     }
 }
 
@@ -54,7 +56,7 @@ exports.deleteProduct = (req, res) => {
 //Api Carrito
 exports.createCarrito = (req, res) => {
     const body = req.body;
-    const idCliente = body.idCliente;
+    const idCliente = req.client._peername.address || req.connection.remoteAddress;
         try {
             const idCarrito = cc.createCarrito(
                 idCliente, 
@@ -64,7 +66,7 @@ exports.createCarrito = (req, res) => {
             res.status(201).json({ mensaje: "Carrito creado", idCarrito });
         }
         catch (error) {
-            res.status(400).json({ mensaje: error });
+            res.status(400).json({ mensaje: error.message });
         }
 }
 
@@ -75,7 +77,7 @@ exports.deleteCarrito = (req, res) => {
         res.status(200).json(cc.deleteCarrito(id));
     }
     catch (error) {
-        res.status(404).json({ mensaje: error });
+        res.status(404).json({ mensaje: error.message });
     }
 }
 
@@ -86,7 +88,7 @@ exports.getCarritoProducts = (req, res) => {
         res.status(200).json(cc.getCarritoById(id).lista);
     }
     catch (error) {
-        res.status(404).json({ mensaje: error });
+        res.status(404).json({ mensaje: error.message });
     }
 }
 
@@ -101,7 +103,7 @@ exports.addProductToCarrito = (req, res) => {
         res.status(200).json(cc.addProductoToCarrito(idCliente, producto, quantity, idCarrito));
     }
     catch (error) {
-        res.status(404).json({ mensaje: error });
+        res.status(404).json({ mensaje: error.message });
     }
 }
 exports.deleteProductFromCarrito = (req, res) => {
@@ -111,7 +113,7 @@ exports.deleteProductFromCarrito = (req, res) => {
         res.status(200).json(cc.deleteProductFromCarrito(idCarrito, idProducto));
     }
     catch (error) {
-        res.status(404).json({ mensaje: error });
+        res.status(404).json({ mensaje: error.message });
     }
 }
 

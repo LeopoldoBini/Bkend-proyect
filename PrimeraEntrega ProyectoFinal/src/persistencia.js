@@ -5,17 +5,15 @@ const ContenedorProductos = class {
     this.nombre = nombreArchivo;
     this.path = `./${nombreArchivo}.json`;
     this.lastId = 0;
-    this.idList = [];
     this.productos = [];
     this.prodKeysFormat = [
       "codigo",
-      "timestamp",
       "title",
       "price",
       "description",
       "thumbnail",
       "category",
-      "stock",
+      "stock"
     ];
   }
   readDB = () => {
@@ -40,13 +38,15 @@ const ContenedorProductos = class {
     }
     const parsedData = this.readDB();
     if (parsedData.length > 0) {
-      this.idList = parsedData.map((prod) => prod.id);
-      this.lastId = Math.max(...this.idList);
+      this.lastId = Math.max(...parsedData.map((prod) => prod.id));
       this.productos = parsedData;  
     }
     return this.productos;
   }
   createProducto(producto) {
+    if (!producto || Object.keys(producto).length !== this.prodKeysFormat.length) {
+      throw new TypeError(`Formato Invalido ,se requieren solo todos estos campos : "${this.prodKeysFormat}"`);
+    }
 
     const isAValidProduct = this.prodKeysFormat.reduce(
       (reducingBoolean, key) => {
@@ -55,26 +55,34 @@ const ContenedorProductos = class {
 
         switch (key) {
           case "stock":
-            isThisValueAcceptable = Number(thisKeyValue) >= 0;
+            if (Number(thisKeyValue) < 0)  {
+              throw new RangeError("El Stock debe ser un Numero mayor o igual a 0")
+            }
+            isThisValueAcceptable = true;
             break;
           case "price":
-            isThisValueAcceptable = Number(thisKeyValue) > 0;
+            if (Number(thisKeyValue) <= 0)  {
+              throw new RangeError("El precio debe ser un Numero mayor que 0")
+            }
+            isThisValueAcceptable = true;
             break;
           default:
             isThisValueAcceptable = !!thisKeyValue;
         }
+
         return reducingBoolean && isThisValueAcceptable;
       },
       true
     );
     if (!isAValidProduct) {
-      throw new Error("Se requieren todos los campos");
+      throw new TypeError(`Formato Invalido ,se requieren estos campos : "${this.prodKeysFormat}"`);
     }
 
     ;
+    const timestamp = new Date().toLocaleString()
     producto.id = ++this.lastId;
+    producto.timestamp = timestamp;
     this.productos.push(producto);
-    this.idList.push(producto.id);
     this.writeDB();
     return producto.id;
   }
@@ -83,21 +91,50 @@ const ContenedorProductos = class {
     return foundProduct.length === 0 ? false : foundProduct;
   }
   updateProducto(id, producto) {
-    //this.getAll();
     const indexToUpdate = this.productos.findIndex((prod) => prod.id == id);
     if (indexToUpdate === -1) {
-      throw new Error("No se encontró el producto");
+      throw new RangeError("No se encontró el producto");
     }
+    if (!producto) {
+      throw new TypeError("Formato Invalido");
+    }
+    
     const keysForUpdating = Object.keys(producto);
+    let keysOutOfPlace =[]
+
+
+    const areKeysForUpdatingValid = keysForUpdating.reduce((prev, curr) =>{
+      const curBool = this.prodKeysFormat.includes(curr)
+      if (!curBool) keysOutOfPlace.push(curr)
+      return prev && curBool
+    }, keysForUpdating.length === 0 ? false : true)
+
+    if(!areKeysForUpdatingValid){
+      throw new TypeError(keysOutOfPlace.length > 0 ? `Campos invalidos: [ ${keysOutOfPlace} ]` : "Formato Invalido")
+    }
 
     keysForUpdating.forEach((key) => {
-      const value = producto[key];
-      if (key == "stock" && value >= 0) {
-        this.productos[indexToUpdate][key] = value;
+      const thisKeyValue = producto[key];
+
+      switch (key) {
+        case "stock":
+          if (Number(thisKeyValue) < 0)  {
+            throw new RangeError("El Stock no puede ser menor que 0")
+          }
+          this.productos[indexToUpdate][key] = thisKeyValue ;
+          break;
+        case "price":
+          if (Number(thisKeyValue) <= 0)  {
+            throw new RangeError("El precio no puede ser 0 o menor")
+          }
+          this.productos[indexToUpdate][key] = thisKeyValue ;
+          break;
+        default:
+          thisKeyValue
+          ? this.productos[indexToUpdate][key] = thisKeyValue 
+          : null
       }
-      if (value) {
-        this.productos[indexToUpdate][key] = value;
-      }
+
     });
     this.writeDB();
     return {
@@ -106,12 +143,12 @@ const ContenedorProductos = class {
     };
   }
   deleteProductoById(id) {
-    //this.getAll();
     const indexToDelete = this.productos.findIndex((prod) => prod.id == id);
     if (indexToDelete === -1) {
-      throw new Error("no tenemos ese producto");
+      throw new Error("El Producto no existe");
     }
     const deletedProduct = this.productos.splice(indexToDelete, 1);
+    
     this.writeDB();
     return {
       mensaje: "producto eliminado",
@@ -120,7 +157,6 @@ const ContenedorProductos = class {
   }
   deleteAll() {
     this.lastId = 0;
-    this.idList = [];
     this.productos = [];
     this.writeDB();
   }
@@ -154,7 +190,7 @@ const ContenedorCarrito = class {
   }
   createCarrito(idCliente, carritoElement) {
     this.getAll();
-    this.lastId++;
+    ++ this.lastId;
     const timestamp = new Date().toLocaleString();
     const carrito = {
       id: this.lastId,
