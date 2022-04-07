@@ -16,7 +16,7 @@ const ContenedorProductos = class {
       "stock"
     ];
   }
-  readDB = () => {
+  readDB () {
     try{
       let json = fs.readFileSync(this.path, "utf8");
       return JSON.parse(json);
@@ -37,48 +37,54 @@ const ContenedorProductos = class {
       return [];
     }
     const parsedData = this.readDB();
-    if (parsedData.length > 0) {
-      this.lastId = Math.max(...parsedData.map((prod) => prod.id));
-      this.productos = parsedData;  
-    }
+
+
+    if (!(Array.isArray(parsedData)) || parsedData.length === 0) {
+      if(Array.isArray(this.productos) && this.productos.length > 0){
+      this.writeDB();
+      return this.productos;
+      }
+      return [];  
+  }
+    this.productos = parsedData;  
+    this.lastId = Math.max(...parsedData.map((prod) => prod.id));
     return this.productos;
   }
+  isAValidProduct(producto) { 
+    const isValid = this.prodKeysFormat.reduce(
+    (reducingBoolean, key) => {
+      const thisKeyValue = producto[key];
+      let isThisValueAcceptable;
+
+      switch (key) {
+        case "stock":
+          if (Number(thisKeyValue) < 0)  {
+            throw new RangeError("El Stock debe ser un Numero mayor o igual a 0")
+          }
+          isThisValueAcceptable = true;
+          break;
+        case "price":
+          if (Number(thisKeyValue) <= 0)  {
+            throw new RangeError("El precio debe ser un Numero mayor que 0")
+          }
+          isThisValueAcceptable = true;
+          break;
+        default:
+          isThisValueAcceptable = !!thisKeyValue;
+      }
+
+      return reducingBoolean && isThisValueAcceptable;
+    },true)
+    return isValid
+  };
   createProducto(producto) {
     if (!producto || Object.keys(producto).length !== this.prodKeysFormat.length) {
       throw new TypeError(`Formato Invalido ,se requieren solo todos estos campos : "${this.prodKeysFormat}"`);
     }
-
-    const isAValidProduct = this.prodKeysFormat.reduce(
-      (reducingBoolean, key) => {
-        const thisKeyValue = producto[key];
-        let isThisValueAcceptable;
-
-        switch (key) {
-          case "stock":
-            if (Number(thisKeyValue) < 0)  {
-              throw new RangeError("El Stock debe ser un Numero mayor o igual a 0")
-            }
-            isThisValueAcceptable = true;
-            break;
-          case "price":
-            if (Number(thisKeyValue) <= 0)  {
-              throw new RangeError("El precio debe ser un Numero mayor que 0")
-            }
-            isThisValueAcceptable = true;
-            break;
-          default:
-            isThisValueAcceptable = !!thisKeyValue;
-        }
-
-        return reducingBoolean && isThisValueAcceptable;
-      },
-      true
-    );
+    const isAValidProduct = this.isAValidProduct(producto);
     if (!isAValidProduct) {
       throw new TypeError(`Formato Invalido ,se requieren estos campos : "${this.prodKeysFormat}"`);
     }
-
-    ;
     const timestamp = new Date().toLocaleString()
     producto.id = ++this.lastId;
     producto.timestamp = timestamp;
@@ -165,51 +171,74 @@ const ContenedorProductos = class {
 const ContenedorCarrito = class {
   constructor(nombreArchivo) {
     this.nombre = nombreArchivo;
-    this.path = `./${nombreArchivo}.txt`;
+    this.path = `./${nombreArchivo}.json`; //persistencia de carritos cerrados / comprados
     this.lastId = 0;
     this.closedCarritos = [];
     this.idList = [];
     this.currentCarritos = [];
     this.currentCarritosIdList = [];
+    this.cartKeysFormat = [
+      "lista",
+      "idCliente"
+    ];
   }
-  getAll() {
-    try {
-      const data = fs.readFileSync(this.path, "utf-8");
-      const parsedData = JSON.parse(data);
-
-      this.idList = parsedData.reduce((a, b) => [...a, b.id], []);
-      this.lastId = Math.max(...this.idList);
-      this.closedCarritos = parsedData;
-
-      return parsedData;
-    } catch (er) {
-      fs.writeFileSync(this.path, "[]");
-      console.log(er);
-      return [];
+  readDB () {
+    try{
+      let json = fs.readFileSync(this.path, "utf8");
+      return JSON.parse(json);
+    } catch (error){
+      console.error("Algo salió mal leyendo la db" ,error)
+      return  
     }
   }
+  writeDB() {
+    const strigyList = JSON.stringify(this.closedCarritos);
+    fs.writeFileSync(this.path, strigyList);
+    this.getAllClosedCarritos();
+  }
+  getAllClosedCarritos() {
+    
+    if (!fs.existsSync(this.path)) {
+      fs.writeFileSync(this.path, "[]");
+      return [];
+    }
+    const parsedData = this.readDB();
+    
+    if (!(Array.isArray(parsedData)) || parsedData.length === 0) {
+        if(Array.isArray(this.closedCarritos) && this.closedCarritos.length > 0){
+        this.writeDB();
+        return this.closedCarritos;
+        }
+        return [];  
+    }
+
+    this.closedCarritos = parsedData;  
+    this.lastId = Math.max(...parsedData.map((cart) => cart.id));
+    return this.closedCarritos;
+  
+  }
   createCarrito(idCliente, carritoElement) {
-    this.getAll();
-    ++ this.lastId;
+    // this.getAllClosedCarritos()
     const timestamp = new Date().toLocaleString();
     const carrito = {
-      id: this.lastId,
+      id: ++ this.lastId,
       timestamp,
       idCliente: idCliente,
       lista: carritoElement ? [carritoElement] : [],
     };
     this.currentCarritos.push(carrito);
+    console.log(this.currentCarritos)
     return carrito.id;
   }
-  findCarritoIndexById(id) {
+  findCurrentCarritoIndexById(id) {
     const foundCarritoIndex = this.currentCarritos.findIndex(
       (carrito) => carrito.id == id
     );
     return foundCarritoIndex;
   }
   deleteCarrito(id) {
-    this.getAll();
-    const indexToDelete = this.findCarritoIndexById(id);
+    //this.getAllClosedCarritos();
+    const indexToDelete = this.findCurrentCarritoIndexById(id);
     if (indexToDelete === -1) {
       throw new Error("no tenemos ese carrito abierto actualmente");
     }
@@ -225,15 +254,11 @@ const ContenedorCarrito = class {
     );
     return foundCarrito.length === 0
       ? "no tenemos ningun carrito con ese id"
-      : foundCarrito;
+      : foundCarrito[0];
   }
-  addProductoToCarrito(idCliente, producto, quantity, idCarrito) {
-    const carritoElement = {
-      idProducto: producto.id,
-      producto,
-      quantity,
-    };
-    const foundCarritoIndex = this.findCarritoIndexById(idCarrito);
+  addProductoToCarrito( carritoElement , idCarrito) {
+
+    const foundCarritoIndex = this.findCurrentCarritoIndexById(idCarrito);
     if (foundCarritoIndex === -1) {
       const newCarritoId = this.createCarrito(idCliente, carritoElement);
       return {
@@ -241,20 +266,34 @@ const ContenedorCarrito = class {
         idCarrito: newCarritoId,
       };
     }
-    this.currentCarritos[foundCarritoIndex].lista.push(carritoElement);
+    const idProductToAdd = carritoElement.idProducto;
+    const foundCarrito = this.currentCarritos[foundCarritoIndex];
+    const foundCarritoList = foundCarrito.lista;
+    const foundCarritoListIds = foundCarritoList.map((element) => element.idProducto);
+
+    if(foundCarritoListIds.includes(idProductToAdd)){
+      const foundCarritoElement = foundCarritoList.find(
+        (element) => element.idProducto == idProductToAdd
+      );
+      foundCarritoElement.quantity += carritoElement.quantity;
+      return {
+        mensaje: "Cantidades Agregadas",
+        lista: foundCarritoList,
+      }
+    }
+    foundCarritoList.push(carritoElement);
     return {
       mensaje: "producto agregado",
-      lista: this.currentCarritos[foundCarritoIndex].lista,
+      lista: foundCarritoList,
     };
   }
   deleteProductFromCarrito(idCarrito, idProducto) {
-    const foundCarritoIndex = this.findCarritoIndexById(idCarrito);
-    if (foundCarrito === -1) {
+    const foundCarritoIndex = this.findCurrentCarritoIndexById(idCarrito);
+    if (foundCarritoIndex === -1) {
       return { mensaje: "no tenemos ese carrito" };
     }
-    const foundProductIndex = this.currentCarritos[
-      foundCarritoIndex
-    ].lista.findIndex((producto) => producto.idProducto == idProducto);
+    const foundCarrito = this.currentCarritos[foundCarritoIndex];
+    const foundProductIndex = foundCarrito.lista.findIndex((producto) => producto.idProducto == idProducto);
     if (foundProductIndex === -1) {
       return { mensaje: "no tenemos ese producto en el carrito" };
     }
@@ -272,14 +311,14 @@ const ContenedorCarrito = class {
     fs.writeFileSync(this.path, strigyList);
   }
   closeCarrito(idCarrito) {
-    const foundCarritoIndex = this.findCarritoIndexById(idCarrito);
+    const foundCarritoIndex = this.findCurrentCarritoIndexById(idCarrito);
     if (foundCarrito === -1) {
       return { mensaje: "no tenemos ese carrito" };
     }
     const closedCarrito = this.currentCarritos.splice(foundCarritoIndex, 1);
     this.closedCarritos.push(closedCarrito[0]);
     this.writeCarritosOnFile();
-    this.getAll();
+    this.getAllClosedCarritos();
     return {
       mensaje: "carrito cerrado",
       carrito: closedCarrito[0],

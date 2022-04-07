@@ -54,15 +54,31 @@ exports.deleteProduct = (req, res) => {
 
 
 //Api Carrito
+/* req = {
+    body: {
+        idCliente : Number,
+        pedido?: {
+            idProducto: Number,
+            cantidad: Number
+        }
+    }
+} */
+
+
 exports.createCarrito = (req, res) => {
     const body = req.body;
-    const idCliente = req.client._peername.address || req.connection.remoteAddress;
+    const idCliente = body.idCliente
+    //req.client._peername.address || req.connection.remoteAddress;
+    let carritoElement = 'pedido' in body
+                ?{  
+                    idProducto: body.pedido.idProducto,
+                    producto: pc.getProductoById(body.pedido.idProducto),
+                    quantity: body.pedido.cantidad
+                }
+                :undefined;
+
         try {
-            const idCarrito = cc.createCarrito(
-                idCliente, 
-                'carritoElement' in body 
-                ? body.carritoElement
-                : null);
+            const idCarrito = cc.createCarrito(idCliente, carritoElement); 
             res.status(201).json({ mensaje: "Carrito creado", idCarrito });
         }
         catch (error) {
@@ -95,15 +111,21 @@ exports.getCarritoProducts = (req, res) => {
 
 exports.addProductToCarrito = (req, res) => {
     const body = req.body;
-    const idCliente = body.idCliente;
-    const producto = body.producto;
+    const idCarrito = req.params.id;
+    const idProducto = body.idProducto;
     const quantity = body.quantity;
-    const idCarrito = body.idCarrito;
+    const carritoElement = {  
+        idProducto,
+        producto: pc.getProductoById(idProducto),
+        quantity
+    }
+    console.log(body)
     try {
-        res.status(200).json(cc.addProductoToCarrito(idCliente, producto, quantity, idCarrito));
+        res.status(200).json(cc.addProductoToCarrito( carritoElement, idCarrito));
     }
     catch (error) {
-        res.status(404).json({ mensaje: error.message });
+        res.status(404).json({ mensaje: error.message,
+        stack: error.stack, });
     }
 }
 exports.deleteProductFromCarrito = (req, res) => {
@@ -113,10 +135,18 @@ exports.deleteProductFromCarrito = (req, res) => {
         res.status(200).json(cc.deleteProductFromCarrito(idCarrito, idProducto));
     }
     catch (error) {
+        res.status(404).json({ mensaje: error.message,stack: error.stack });
+    }
+}
+exports.closeCarrito = (req, res) => {
+    const idCarrito = req.params.idCarrito;
+    try {
+        res.status(200).json(cc.closeCarrito(idCarrito));
+    }
+    catch (error) {
         res.status(404).json({ mensaje: error.message });
     }
 }
-
 
 
 
