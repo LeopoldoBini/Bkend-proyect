@@ -1,5 +1,5 @@
-const fs = require("fs");
-// clases e instancia de clases
+import fs from 'fs';
+
 const ContenedorProductos = class {
   constructor(nombreArchivo) {
     this.nombre = nombreArchivo;
@@ -251,5 +251,5 @@ const ContenedorCarrito = class {
   }
 };
 
-exports.productsContainer = new ContenedorProductos("productos");
-exports.carritosContainer = new ContenedorCarrito("carritos");
+export const productsContainer = new ContenedorProductos("productos");
+export const carritosContainer = new ContenedorCarrito("carritos");

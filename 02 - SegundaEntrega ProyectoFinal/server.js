@@ -1,6 +1,6 @@
 import express, { json, urlencoded, Router } from 'express';
-import { productsContainer as pc, carritosContainer as cc } from "./src/persistencia";
-import { getProducts, addProduct, updateProduct, deleteProduct, createCarrito, deleteCarrito, getCarritoProducts, addProductToCarrito, deleteProductFromCarrito } from './src/api';
+import { productsContainer as pc, carritosContainer as cc } from "./src/persistencia.js";
+import { getProducts, addProduct, updateProduct, deleteProduct, createCarrito, deleteCarrito, getCarritoProducts, addProductToCarrito, deleteProductFromCarrito } from './src/api.js';
 
 pc.getAll()
 cc.getAll()

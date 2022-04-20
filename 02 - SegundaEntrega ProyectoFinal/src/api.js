@@ -1,5 +1,5 @@
 //callbacks de las rutas
-import { productsContainer as pc, carritosContainer as cc } from "./persistencia";
+import { productsContainer as pc, carritosContainer as cc } from "./persistencia.js";
 
 //Api Productos
 
