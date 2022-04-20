@@ -1,9 +1,9 @@
 const express = require('express')
 const { productsContainer : pc, carritosContainer : cc } = require("./persistencia");
-const { getProducts, addProduct, updateProduct, deleteProduct, createCarrito, deleteCarrito, getCarritoProducts, addProductToCarrito, deleteProductFromCarrito } = require('./api')
+const { getProducts, addProduct, updateProduct, deleteProduct, createCarrito, deleteCarrito, getCarritoProducts, addProductToCarrito, deleteProductFromCarrito, closeCarrito } = require('./api')
 
 pc.getAll()
-cc.getAll()
+cc.getAllClosedCarritos()
 
 const app = express()
 app.use(express.json())
@@ -13,6 +13,9 @@ const apiCart = express.Router();
 app.use("/api/productos", apiProd);
 app.use("/api/carrito", apiCart);
 
+
+
+apiProd.get("/", getProducts)
 apiProd.get("/:id", getProducts)
 
 apiProd.post("/", addProduct) //Solo admin
@@ -26,11 +29,13 @@ apiCart.post("/", createCarrito)
 
 apiCart.delete("/:id", deleteCarrito)
 
-apiCart.get("/:id/productos", getCarritoProducts)
-
 apiCart.post("/:id/productos", addProductToCarrito)
 
-apiCart.delete("/:id/productos/:idProducto", deleteProductFromCarrito)
+apiCart.get("/:id/productos", getCarritoProducts)
+
+apiCart.delete("/:idCarrito/productos/:idProducto", deleteProductFromCarrito)
+
+apiCart.put("/:idCarrito/", closeCarrito)
 
 
 

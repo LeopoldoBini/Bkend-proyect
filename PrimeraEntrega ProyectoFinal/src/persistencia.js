@@ -5,20 +5,18 @@ const ContenedorProductos = class {
     this.nombre = nombreArchivo;
     this.path = `./${nombreArchivo}.json`;
     this.lastId = 0;
-    this.idList = [];
     this.productos = [];
     this.prodKeysFormat = [
       "codigo",
-      "timestamp",
       "title",
       "price",
       "description",
       "thumbnail",
       "category",
-      "stock",
+      "stock"
     ];
   }
-  readDB = () => {
+  readDB () {
     try{
       let json = fs.readFileSync(this.path, "utf8");
       return JSON.parse(json);
@@ -39,42 +37,58 @@ const ContenedorProductos = class {
       return [];
     }
     const parsedData = this.readDB();
-    if (parsedData.length > 0) {
-      this.idList = parsedData.map((prod) => prod.id);
-      this.lastId = Math.max(...this.idList);
-      this.productos = parsedData;  
-    }
+
+
+    if (!(Array.isArray(parsedData)) || parsedData.length === 0) {
+      if(Array.isArray(this.productos) && this.productos.length > 0){
+      this.writeDB();
+      return this.productos;
+      }
+      return [];  
+  }
+    this.productos = parsedData;  
+    this.lastId = Math.max(...parsedData.map((prod) => prod.id));
     return this.productos;
   }
+  isAValidProduct(producto) { 
+    const isValid = this.prodKeysFormat.reduce(
+    (reducingBoolean, key) => {
+      const thisKeyValue = producto[key];
+      let isThisValueAcceptable;
+
+      switch (key) {
+        case "stock":
+          if (Number(thisKeyValue) < 0)  {
+            throw new RangeError("El Stock debe ser un Numero mayor o igual a 0")
+          }
+          isThisValueAcceptable = true;
+          break;
+        case "price":
+          if (Number(thisKeyValue) <= 0)  {
+            throw new RangeError("El precio debe ser un Numero mayor que 0")
+          }
+          isThisValueAcceptable = true;
+          break;
+        default:
+          isThisValueAcceptable = !!thisKeyValue;
+      }
+
+      return reducingBoolean && isThisValueAcceptable;
+    },true)
+    return isValid
+  };
   createProducto(producto) {
-
-    const isAValidProduct = this.prodKeysFormat.reduce(
-      (reducingBoolean, key) => {
-        const thisKeyValue = producto[key];
-        let isThisValueAcceptable;
-
-        switch (key) {
-          case "stock":
-            isThisValueAcceptable = Number(thisKeyValue) >= 0;
-            break;
-          case "price":
-            isThisValueAcceptable = Number(thisKeyValue) > 0;
-            break;
-          default:
-            isThisValueAcceptable = !!thisKeyValue;
-        }
-        return reducingBoolean && isThisValueAcceptable;
-      },
-      true
-    );
-    if (!isAValidProduct) {
-      throw new Error("Se requieren todos los campos");
+    if (!producto || Object.keys(producto).length !== this.prodKeysFormat.length) {
+      throw new TypeError(`Formato Invalido ,se requieren solo todos estos campos : "${this.prodKeysFormat}"`);
     }
-
-    ;
+    const isAValidProduct = this.isAValidProduct(producto);
+    if (!isAValidProduct) {
+      throw new TypeError(`Formato Invalido ,se requieren estos campos : "${this.prodKeysFormat}"`);
+    }
+    const timestamp = new Date().toLocaleString()
     producto.id = ++this.lastId;
+    producto.timestamp = timestamp;
     this.productos.push(producto);
-    this.idList.push(producto.id);
     this.writeDB();
     return producto.id;
   }
@@ -83,21 +97,50 @@ const ContenedorProductos = class {
     return foundProduct.length === 0 ? false : foundProduct;
   }
   updateProducto(id, producto) {
-    //this.getAll();
     const indexToUpdate = this.productos.findIndex((prod) => prod.id == id);
     if (indexToUpdate === -1) {
-      throw new Error("No se encontró el producto");
+      throw new RangeError("No se encontró el producto");
     }
+    if (!producto) {
+      throw new TypeError("Formato Invalido");
+    }
+    
     const keysForUpdating = Object.keys(producto);
+    let keysOutOfPlace =[]
+
+
+    const areKeysForUpdatingValid = keysForUpdating.reduce((prev, curr) =>{
+      const curBool = this.prodKeysFormat.includes(curr)
+      if (!curBool) keysOutOfPlace.push(curr)
+      return prev && curBool
+    }, keysForUpdating.length === 0 ? false : true)
+
+    if(!areKeysForUpdatingValid){
+      throw new TypeError(keysOutOfPlace.length > 0 ? `Campos invalidos: [ ${keysOutOfPlace} ]` : "Formato Invalido")
+    }
 
     keysForUpdating.forEach((key) => {
-      const value = producto[key];
-      if (key == "stock" && value >= 0) {
-        this.productos[indexToUpdate][key] = value;
+      const thisKeyValue = producto[key];
+
+      switch (key) {
+        case "stock":
+          if (Number(thisKeyValue) < 0)  {
+            throw new RangeError("El Stock no puede ser menor que 0")
+          }
+          this.productos[indexToUpdate][key] = thisKeyValue ;
+          break;
+        case "price":
+          if (Number(thisKeyValue) <= 0)  {
+            throw new RangeError("El precio no puede ser 0 o menor")
+          }
+          this.productos[indexToUpdate][key] = thisKeyValue ;
+          break;
+        default:
+          thisKeyValue
+          ? this.productos[indexToUpdate][key] = thisKeyValue 
+          : null
       }
-      if (value) {
-        this.productos[indexToUpdate][key] = value;
-      }
+
     });
     this.writeDB();
     return {
@@ -106,12 +149,12 @@ const ContenedorProductos = class {
     };
   }
   deleteProductoById(id) {
-    //this.getAll();
     const indexToDelete = this.productos.findIndex((prod) => prod.id == id);
     if (indexToDelete === -1) {
-      throw new Error("no tenemos ese producto");
+      throw new Error("El Producto no existe");
     }
     const deletedProduct = this.productos.splice(indexToDelete, 1);
+    
     this.writeDB();
     return {
       mensaje: "producto eliminado",
@@ -120,7 +163,6 @@ const ContenedorProductos = class {
   }
   deleteAll() {
     this.lastId = 0;
-    this.idList = [];
     this.productos = [];
     this.writeDB();
   }
@@ -129,51 +171,78 @@ const ContenedorProductos = class {
 const ContenedorCarrito = class {
   constructor(nombreArchivo) {
     this.nombre = nombreArchivo;
+<<<<<<< HEAD
     this.path = `./${nombreArchivo}.json`;
+=======
+    this.path = `./${nombreArchivo}.json`; //persistencia de carritos cerrados / comprados
+>>>>>>> 38d104e048c49049bca394c807d8d34475a2f8d3
     this.lastId = 0;
     this.closedCarritos = [];
     this.idList = [];
     this.currentCarritos = [];
     this.currentCarritosIdList = [];
+    this.cartKeysFormat = [
+      "lista",
+      "idCliente"
+    ];
   }
-  getAll() {
-    try {
-      const data = fs.readFileSync(this.path, "utf-8");
-      const parsedData = JSON.parse(data);
-
-      this.idList = parsedData.reduce((a, b) => [...a, b.id], []);
-      this.lastId = Math.max(...this.idList);
-      this.closedCarritos = parsedData;
-
-      return parsedData;
-    } catch (er) {
-      fs.writeFileSync(this.path, "[]");
-      console.log(er);
-      return [];
+  readDB () {
+    try{
+      let json = fs.readFileSync(this.path, "utf8");
+      return JSON.parse(json);
+    } catch (error){
+      console.error("Algo salió mal leyendo la db" ,error)
+      return  
     }
   }
+  writeDB() {
+    const strigyList = JSON.stringify(this.closedCarritos);
+    fs.writeFileSync(this.path, strigyList);
+    this.getAllClosedCarritos();
+  }
+  getAllClosedCarritos() {
+    
+    if (!fs.existsSync(this.path)) {
+      fs.writeFileSync(this.path, "[]");
+      return [];
+    }
+    const parsedData = this.readDB();
+    
+    if (!(Array.isArray(parsedData)) || parsedData.length === 0) {
+        if(Array.isArray(this.closedCarritos) && this.closedCarritos.length > 0){
+        this.writeDB();
+        return this.closedCarritos;
+        }
+        return [];  
+    }
+
+    this.closedCarritos = parsedData;  
+    this.lastId = Math.max(...parsedData.map((cart) => cart.id));
+    return this.closedCarritos;
+  
+  }
   createCarrito(idCliente, carritoElement) {
-    this.getAll();
-    this.lastId++;
+    // this.getAllClosedCarritos()
     const timestamp = new Date().toLocaleString();
     const carrito = {
-      id: this.lastId,
+      id: ++ this.lastId,
       timestamp,
       idCliente: idCliente,
       lista: carritoElement ? [carritoElement] : [],
     };
     this.currentCarritos.push(carrito);
+    console.log(this.currentCarritos)
     return carrito.id;
   }
-  findCarritoIndexById(id) {
+  findCurrentCarritoIndexById(id) {
     const foundCarritoIndex = this.currentCarritos.findIndex(
       (carrito) => carrito.id == id
     );
     return foundCarritoIndex;
   }
   deleteCarrito(id) {
-    this.getAll();
-    const indexToDelete = this.findCarritoIndexById(id);
+    //this.getAllClosedCarritos();
+    const indexToDelete = this.findCurrentCarritoIndexById(id);
     if (indexToDelete === -1) {
       throw new Error("no tenemos ese carrito abierto actualmente");
     }
@@ -189,15 +258,11 @@ const ContenedorCarrito = class {
     );
     return foundCarrito.length === 0
       ? "no tenemos ningun carrito con ese id"
-      : foundCarrito;
+      : foundCarrito[0];
   }
-  addProductoToCarrito(idCliente, producto, quantity, idCarrito) {
-    const carritoElement = {
-      idProducto: producto.id,
-      producto,
-      quantity,
-    };
-    const foundCarritoIndex = this.findCarritoIndexById(idCarrito);
+  addProductoToCarrito( carritoElement , idCarrito) {
+
+    const foundCarritoIndex = this.findCurrentCarritoIndexById(idCarrito);
     if (foundCarritoIndex === -1) {
       const newCarritoId = this.createCarrito(idCliente, carritoElement);
       return {
@@ -205,20 +270,34 @@ const ContenedorCarrito = class {
         idCarrito: newCarritoId,
       };
     }
-    this.currentCarritos[foundCarritoIndex].lista.push(carritoElement);
+    const idProductToAdd = carritoElement.idProducto;
+    const foundCarrito = this.currentCarritos[foundCarritoIndex];
+    const foundCarritoList = foundCarrito.lista;
+    const foundCarritoListIds = foundCarritoList.map((element) => element.idProducto);
+
+    if(foundCarritoListIds.includes(idProductToAdd)){
+      const foundCarritoElement = foundCarritoList.find(
+        (element) => element.idProducto == idProductToAdd
+      );
+      foundCarritoElement.quantity += carritoElement.quantity;
+      return {
+        mensaje: "Cantidades Agregadas",
+        lista: foundCarritoList,
+      }
+    }
+    foundCarritoList.push(carritoElement);
     return {
       mensaje: "producto agregado",
-      lista: this.currentCarritos[foundCarritoIndex].lista,
+      lista: foundCarritoList,
     };
   }
   deleteProductFromCarrito(idCarrito, idProducto) {
-    const foundCarritoIndex = this.findCarritoIndexById(idCarrito);
-    if (foundCarrito === -1) {
+    const foundCarritoIndex = this.findCurrentCarritoIndexById(idCarrito);
+    if (foundCarritoIndex === -1) {
       return { mensaje: "no tenemos ese carrito" };
     }
-    const foundProductIndex = this.currentCarritos[
-      foundCarritoIndex
-    ].lista.findIndex((producto) => producto.idProducto == idProducto);
+    const foundCarrito = this.currentCarritos[foundCarritoIndex];
+    const foundProductIndex = foundCarrito.lista.findIndex((producto) => producto.idProducto == idProducto);
     if (foundProductIndex === -1) {
       return { mensaje: "no tenemos ese producto en el carrito" };
     }
@@ -236,14 +315,14 @@ const ContenedorCarrito = class {
     fs.writeFileSync(this.path, strigyList);
   }
   closeCarrito(idCarrito) {
-    const foundCarritoIndex = this.findCarritoIndexById(idCarrito);
+    const foundCarritoIndex = this.findCurrentCarritoIndexById(idCarrito);
     if (foundCarrito === -1) {
       return { mensaje: "no tenemos ese carrito" };
     }
     const closedCarrito = this.currentCarritos.splice(foundCarritoIndex, 1);
     this.closedCarritos.push(closedCarrito[0]);
     this.writeCarritosOnFile();
-    this.getAll();
+    this.getAllClosedCarritos();
     return {
       mensaje: "carrito cerrado",
       carrito: closedCarrito[0],
