@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 
 const cartSchema = new mongoose.Schema({
-    idCliente: {
+    idClient: {
         type: Number,
         required: true,
         min: 1
@@ -11,18 +11,17 @@ const cartSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    lista: {
+    productsList: {
         type: Array,
         required: true
     },
-    total: {
+    totalPrice: {
         type: Number,
         required: true,
         min: 0
     },
     isClosed: {
         type: Boolean,
-        required: true,
         default: false
     },
     quantityOfDifferentProducts: {
@@ -32,4 +31,4 @@ const cartSchema = new mongoose.Schema({
     }
 });
 
-export const CartModel = mongoose.model('Cart', cartSchema);
+export const CartModel = mongoose.model('Carts', cartSchema);

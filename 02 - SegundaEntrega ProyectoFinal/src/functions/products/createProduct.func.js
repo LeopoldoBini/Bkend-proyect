@@ -1,12 +1,21 @@
-import { ProductModel } from '../../models/product.models';
+import { ProductModel } from '../../models/product.models.js';
 
 export const createProduct = async (product) => {
-    const newProduct = new ProductModel(product);
-    const productCreated = await newProduct.save();
-    return productCreated._id;
+    try {
+        const newProduct = new ProductModel(product);
+        const productCreated = await newProduct.save();
+        return productCreated._id;
+        
+    } catch (error) {
+        return error;
+    }
 }
 
 export const createManyProducts = async (products) => {
-    const productsCreated = await ProductModel.create(products);
-    return productsCreated;
+    try {
+        const productsCreated = await ProductModel.create(products);
+        return productsCreated;
+    } catch (error) {
+        return error;
+    }
 }

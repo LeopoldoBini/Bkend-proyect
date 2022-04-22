@@ -1,7 +1,10 @@
-// create a funtion that set the property "active" to false of a produc in the collection products, and return a message using mongoose
-import { ProductModel } from '../../models/product.models';
+import { ProductModel } from '../../models/product.models.js';
 
 export const deleteProductById = async (id) => {
-    const productDeleted = await ProductModel.findByIdAndUpdate(id, { active: false }, { new: true });
-    return productDeleted;
+    try {
+        const product = await ProductModel.findByIdAndUpdate(id, { active: false }, { new: true });
+        return product;
+    } catch (error) {
+        return error;
+    }
 }
