@@ -1,13 +1,13 @@
 import { ProductModel } from '../../models/product.models.js';
 
 export const getProducts = async (isActive) => {
-
     try {
-        const products = await ProductModel.find( isActive === undefined ? {} : { active: isActive })
+        const gettingParams = isActive?.active || true
+        const products = await ProductModel.find({ active: gettingParams } );
         return products;
     }
     catch (error) {
-        return error;
+        throw new Error(error);
     }   
 }
 
@@ -18,8 +18,9 @@ export const getProductById = async (id) => {
         return product;
     }
     catch (error) {
-        return error;
+        throw new Error(error);
     }
 }
+
 
 

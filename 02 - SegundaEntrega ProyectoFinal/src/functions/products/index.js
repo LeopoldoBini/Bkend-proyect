@@ -1,4 +1,3 @@
-//export every function in this folder
 export * from './createProduct.func.js';
 export * from './deleteProductById.func.js';
 export * from './getProducts.func.js';

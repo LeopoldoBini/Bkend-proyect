@@ -1,9 +1,10 @@
 
 import { CartModel } from '../../models/cart.models.js';
 
-export const createCart = async (idClient) => {
+export const cartCreator = async (idClient) => {
     try {
-        const newCart = new CartModel({ idClient: idClient });
+        const timestamp = new Date().toLocaleString();
+        const newCart = new CartModel({ idClient: idClient , timestamp: timestamp, totalPrice: 0 });
         const cartCreated = await newCart.save();
         return cartCreated._id;
     } catch (error) {
@@ -13,11 +14,3 @@ export const createCart = async (idClient) => {
 }
 
 
-export const closeCart = async (idCart) => {   
-    try {
-        const cartClosed = await CartModel.findByIdAndUpdate(idCart, { isClosed: true }, { new: true });
-        return cartClosed;
-    } catch (error) {
-        return error;
-    }
-}

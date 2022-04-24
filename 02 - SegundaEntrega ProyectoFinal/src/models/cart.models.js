@@ -3,9 +3,8 @@ import mongoose from 'mongoose';
 
 const cartSchema = new mongoose.Schema({
     idClient: {
-        type: Number,
-        required: true,
-        min: 1
+        type: String,
+        required: true
     },
     timestamp: {
         type: String,
@@ -13,11 +12,11 @@ const cartSchema = new mongoose.Schema({
     },
     productsList: {
         type: Array,
-        required: true
+        default: []
     },
     totalPrice: {
         type: Number,
-        required: true,
+        default: 0,
         min: 0
     },
     isClosed: {
@@ -26,7 +25,7 @@ const cartSchema = new mongoose.Schema({
     },
     quantityOfDifferentProducts: {
         type: Number,
-        required: true,
+        default: 0,
         min: 0
     }
 });
